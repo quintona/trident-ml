@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Trident-ml by pmerienne</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Trident-ml</h1>
+        <p>Trident-ML : A distributed realtime online machine learning library</p>
+
+        <p class="view"><a href="https://github.com/pmerienne/trident-ml">View the Project on GitHub <small>pmerienne/trident-ml</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/pmerienne/trident-ml/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/pmerienne/trident-ml/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/pmerienne/trident-ml">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>Trident-ML is a realtime online machine learning library. It allows you to build real time predictive features using scalable online algorihms.
+This library is built on top of <a href="https://github.com/nathanmarz/storm">Storm</a>, a distributed stream processing framework which runs on a cluster of machines and supports horizontal scaling.
+The packaged algorithms are designed to fit into limited memory and processing time but they don't work in a distributed way.</p>
+
+<p>Trident-ML currently supports : </p>
+
+<ul>
+<li>Linear classification (Perceptron, Passive-Aggresive, Winnow, AROW)</li>
+<li>Linear regression (Perceptron, Passive-Aggresive)</li>
+<li>Clustering (KMeans)</li>
+<li>Feature scaling (standardization, normalization)</li>
+<li>Text feature extraction</li>
+<li>Stream statistics (mean, variance)</li>
+</ul><h1>API Overview</h1>
+
+<p>Trident-ML is based on <a href="https://github.com/nathanmarz/storm/wiki/Trident-tutorial">Trident</a>, a high-level abstraction for doing realtime computing.
+If you're familiar with high level batch processing tools like Pig or Cascading, the concepts of Trident will be very familiar.</p>
+
+<h2>Create instances</h2>
+
+<p>Trident-ML process unbounded streams of data implemented by an infinite collection of <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/core/Instance.java">Instance</a> or <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/core/TextInstance.java">TextInstance</a>.
+Creating instances is the first step to build a prediction tools.
+Trident-ML offers <a href="https://github.com/nathanmarz/storm/wiki/Trident-API-Overview#functions">Trident functions</a> to convert Trident tuples to instances :</p>
+
+<ul>
+<li>Use <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/preprocessing/InstanceCreator.java">InstanceCreator</a> to create <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/core/Instance.java">Instance</a>
+</li>
+</ul><div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="n">toppology</span>
+  <span class="c1">// Emit tuples with 2 random features (named x0 and x1) and an associated boolean label (named label)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"randomFeatures"</span><span class="o">,</span> <span class="k">new</span> <span class="n">RandomFeaturesSpout</span><span class="o">())</span>
+
+  <span class="c1">// Transform trident tuple to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"x0"</span><span class="o">,</span> <span class="s">"x1"</span><span class="o">),</span> <span class="k">new</span> <span class="n">InstanceCreator</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">));</span>
+</pre></div>
+
+<ul>
+<li>Use <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/preprocessing/TextInstanceCreator.java">TextInstanceCreator</a> to create <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/core/TextInstance.java">TextInstance</a>
+</li>
+</ul><div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="n">toppology</span>
+  <span class="c1">// Emit tuples containing text and associated label (topic)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"reuters"</span><span class="o">,</span> <span class="k">new</span> <span class="n">ReutersBatchSpout</span><span class="o">())</span>
+
+  <span class="c1">// Convert trident tuple to text instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"text"</span><span class="o">),</span> <span class="k">new</span> <span class="n">TextInstanceCreator</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">));</span>
+</pre></div>
+
+<h2>Supervised classification</h2>
+
+<p>Trident-ML includes differents algorithms to do supervised classification : </p>
+
+<ul>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/PerceptronClassifier.java">PerceptronClassifier</a>
+implements a binary classifier based on an averaged kernel-based perceptron.</li>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/WinnowClassifier.java">WinnowClassifier</a>
+implements <a href="http://link.springer.com/content/pdf/10.1007%2FBF00116827.pdf">Winnow algorithm</a>.
+It scales well to high-dimensional data and performs better than a perceptron when many dimensions are irrelevant. </li>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/BWinnowClassifier.java">BWinnowClassifier</a>
+is an implementation of the <a href="http://link.springer.com/content/pdf/10.1007%2FBF00116827.pdf">Balanced Winnow algorithm</a> 
+an extension of the original Winnow algorithm.</li>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/AROWClassifier.java">AROWClassifier</a>
+is an simple and efficient implementation of <a href="http://books.nips.cc/papers/files/nips22/NIPS2009_0611.pdf">Adaptive Regularization of Weights</a>.
+It combines several useful properties : large margin training, confidence weighting, and the capacity to handle non-separable data.</li>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/PAClassifier.java">PAClassifier</a>
+implements the <a href="http://eprints.pascal-network.org/archive/00002147/01/CrammerDeKeShSi06.pdf">Passive-Aggresive binary classifier</a>
+a margin based learning algorithm.</li>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/MultiClassPAClassifier.java">MultiClassPAClassifier</a>
+a variant of the Passive-Aggresive performing one-vs-all multiclass classification.</li>
+</ul><p>Theses classifiers learn from a datastream of labeled <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/core/Instance.java">Instance</a>
+using a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/ClassifierUpdater.java">ClassifierUpdater</a>.
+Another datastream of unlabeled instance can be classified with a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/classification/ClassifyQuery.java">ClassifyQuery</a>.</p>
+
+<p>The following example learn a NAND function and classify instances comming from a DRPC stream.</p>
+
+<div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="c1">// Create perceptron state from labeled instances stream</span>
+<span class="n">TridentState</span> <span class="n">perceptronModel</span> <span class="o">=</span> <span class="n">toppology</span>
+  <span class="c1">// Emit tuple with a labeled instance of enhanced NAND features</span>
+  <span class="c1">// i.e. : {label=true, features=[1.0 0.0 1.0]} or {label=false, features=[1.0 1.0 1.0]}  </span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"nandsamples"</span><span class="o">,</span> <span class="k">new</span> <span class="n">NANDSpout</span><span class="o">())</span>
+
+  <span class="c1">// Update perceptron</span>
+  <span class="o">.</span><span class="na">partitionPersist</span><span class="o">(</span><span class="k">new</span> <span class="n">MemoryMapState</span><span class="o">.</span><span class="na">Factory</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">ClassifierUpdater</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;(</span><span class="s">"perceptron"</span><span class="o">,</span> <span class="k">new</span> <span class="n">PerceptronClassifier</span><span class="o">()));</span>
+
+<span class="c1">// Classify instance from a DRPC stream</span>
+<span class="n">toppology</span><span class="o">.</span><span class="na">newDRPCStream</span><span class="o">(</span><span class="s">"predict"</span><span class="o">,</span> <span class="n">localDRPC</span><span class="o">)</span>
+  <span class="c1">// Transform DRPC ARGS to unlabeled instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"args"</span><span class="o">),</span> <span class="k">new</span> <span class="n">DRPCArgsToInstance</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Classify instance using perceptron state</span>
+  <span class="o">.</span><span class="na">stateQuery</span><span class="o">(</span><span class="n">perceptronModel</span><span class="o">,</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">ClassifyQuery</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;(</span><span class="s">"perceptron"</span><span class="o">),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"prediction"</span><span class="o">));</span>
+</pre></div>
+
+<p>Trident-ML provides the <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/nlp/KLDClassifier.java">KLDClassifier</a>
+which implements a <a href="http://lvk.cs.msu.su/%7Ebruzz/articles/classification/Using%20Kullback-Leibler%20Distance%20for%20Text%20Categorization.pdf">text classifier using the Kullback-Leibler Distance</a>.</p>
+
+<p>Here's the code to build a news classifier using Reuters dataset :</p>
+
+<div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="c1">// Create KLD classifier state from labeled instances stream</span>
+<span class="n">TridentState</span> <span class="n">classifierState</span> <span class="o">=</span> <span class="n">toppology</span>
+  <span class="c1">// Emit tuples containing text and associated label (topic)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"reuters"</span><span class="o">,</span> <span class="k">new</span> <span class="n">ReutersBatchSpout</span><span class="o">())</span>
+
+  <span class="c1">// Convert trident tuple to text instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"text"</span><span class="o">),</span> <span class="k">new</span> <span class="n">TextInstanceCreator</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Update classifier</span>
+  <span class="o">.</span><span class="na">partitionPersist</span><span class="o">(</span><span class="k">new</span> <span class="n">MemoryMapState</span><span class="o">.</span><span class="na">Factory</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">TextClassifierUpdater</span><span class="o">(</span><span class="s">"newsClassifier"</span><span class="o">,</span> <span class="k">new</span> <span class="n">KLDClassifier</span><span class="o">(</span><span class="mi">9</span><span class="o">)));</span>
+
+<span class="c1">// Classification stream</span>
+<span class="n">toppology</span><span class="o">.</span><span class="na">newDRPCStream</span><span class="o">(</span><span class="s">"classify"</span><span class="o">,</span> <span class="n">localDRPC</span><span class="o">)</span>
+
+  <span class="c1">// Convert DRPC args to text instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"args"</span><span class="o">),</span> <span class="k">new</span> <span class="n">TextInstanceCreator</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;(</span><span class="kc">false</span><span class="o">),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Query classifier with text instance</span>
+  <span class="o">.</span><span class="na">stateQuery</span><span class="o">(</span><span class="n">classifierState</span><span class="o">,</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">ClassifyTextQuery</span><span class="o">(</span><span class="s">"newsClassifier"</span><span class="o">),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"prediction"</span><span class="o">));</span>
+</pre></div>
+
+<h2>Unsupervised classification</h2>
+
+<p><a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/clustering/KMeans.java">KMeans</a>
+is an implementation of the well known <a href="http://en.wikipedia.org/wiki/K-means_clustering">k-means algorithm</a>
+which partitions instances into clusters.</p>
+
+<p>Use a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/clustering/ClusterUpdater.java">ClusterUpdater</a>
+or a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/clustering/ClusterQuery.java">ClusterQuery</a>
+to respectively udpate clusters or query the clusterer :</p>
+
+<div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="c1">// Training stream</span>
+<span class="n">TridentState</span> <span class="n">kmeansState</span> <span class="o">=</span> <span class="n">toppology</span>
+  <span class="c1">// Emit tuples with a instance containing an integer as label and 3 double features named (x0, x1 and x2)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"samples"</span><span class="o">,</span> <span class="k">new</span> <span class="n">RandomFeaturesForClusteringSpout</span><span class="o">())</span>
+
+  <span class="c1">// Convert trident tuple to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"x0"</span><span class="o">,</span> <span class="s">"x1"</span><span class="o">,</span> <span class="s">"x2"</span><span class="o">),</span> <span class="k">new</span> <span class="n">InstanceCreator</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Update a 3 classes kmeans</span>
+  <span class="o">.</span><span class="na">partitionPersist</span><span class="o">(</span><span class="k">new</span> <span class="n">MemoryMapState</span><span class="o">.</span><span class="na">Factory</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">ClusterUpdater</span><span class="o">(</span><span class="s">"kmeans"</span><span class="o">,</span> <span class="k">new</span> <span class="n">KMeans</span><span class="o">(</span><span class="mi">3</span><span class="o">)));</span>
+
+<span class="c1">// Cluster stream</span>
+<span class="n">toppology</span><span class="o">.</span><span class="na">newDRPCStream</span><span class="o">(</span><span class="s">"predict"</span><span class="o">,</span> <span class="n">localDRPC</span><span class="o">)</span>
+  <span class="c1">// Convert DRPC args to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"args"</span><span class="o">),</span> <span class="k">new</span> <span class="n">DRPCArgsToInstance</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Query kmeans to classify instance</span>
+  <span class="o">.</span><span class="na">stateQuery</span><span class="o">(</span><span class="n">kmeansState</span><span class="o">,</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">ClusterQuery</span><span class="o">(</span><span class="s">"kmeans"</span><span class="o">),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"prediction"</span><span class="o">));</span>
+</pre></div>
+
+<h2>Stream statistics</h2>
+
+<p>Stream statistics such as mean, standard deviation and count can be easily computed using Trident-ML.
+Theses statistics are stored in a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/stats/StreamStatistics.java">StreamStatistics</a> object.
+Statistics update and query are performed respectively using a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/stats/StreamStatisticsUpdater.java">StreamStatisticsUpdater</a> and a <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/stats/StreamStatisticsQuery.java">StreamStatisticsQuery</a> :</p>
+
+<div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="c1">// Update stream statistics</span>
+<span class="n">TridentState</span> <span class="n">streamStatisticsState</span> <span class="o">=</span> <span class="n">toppology</span>
+  <span class="c1">// emit tuples with random features</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"randomFeatures"</span><span class="o">,</span> <span class="k">new</span> <span class="n">RandomFeaturesSpout</span><span class="o">())</span>
+
+  <span class="c1">// Transform trident tuple to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"x0"</span><span class="o">,</span> <span class="s">"x1"</span><span class="o">),</span> <span class="k">new</span> <span class="n">InstanceCreator</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Update stream statistics</span>
+  <span class="o">.</span><span class="na">partitionPersist</span><span class="o">(</span><span class="k">new</span> <span class="n">MemoryMapState</span><span class="o">.</span><span class="na">Factory</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">StreamStatisticsUpdater</span><span class="o">(</span><span class="s">"randomFeaturesStream"</span><span class="o">,</span> <span class="n">StreamStatistics</span><span class="o">.</span><span class="na">fixed</span><span class="o">()));</span>
+
+<span class="c1">// Query stream statistics (with DRPC)</span>
+<span class="n">toppology</span><span class="o">.</span><span class="na">newDRPCStream</span><span class="o">(</span><span class="s">"queryStats"</span><span class="o">,</span> <span class="n">localDRPC</span><span class="o">)</span>
+  <span class="c1">// Query stream statistics</span>
+  <span class="o">.</span><span class="na">stateQuery</span><span class="o">(</span><span class="n">streamStatisticsState</span><span class="o">,</span> <span class="k">new</span> <span class="n">StreamStatisticsQuery</span><span class="o">(</span><span class="s">"randomFeaturesStream"</span><span class="o">),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"streamStats"</span><span class="o">));</span>
+
+</pre></div>
+
+<p>Note that Trident-ML can suppport concept drift in a sliding window manner.
+Use StreamStatistics#adaptive(maxSize) instead of StreamStatistics#fixed() to construct StreamStatistics implementation with a maxSize length window.</p>
+
+<h2>Preprocessing data</h2>
+
+<p>Data preprocessing is an important step in the data mining process. 
+Trident-ML provides Trident functions to transform raw features into a representation that is more suitable for machine learning algorithms.</p>
+
+<ul>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/preprocessing/Normalizer.java">Normalizer</a> scales individual instances to have unit norm. </li>
+</ul><div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="n">toppology</span>
+  <span class="c1">// Emit tuples with 2 random features (named x0 and x1) and an associated boolean label (named label)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"randomFeatures"</span><span class="o">,</span> <span class="k">new</span> <span class="n">RandomFeaturesSpout</span><span class="o">())</span>
+
+  <span class="c1">// Convert trident tuple to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"x0"</span><span class="o">,</span> <span class="s">"x1"</span><span class="o">),</span> <span class="k">new</span> <span class="n">InstanceCreator</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Scales features to unit norm</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">Normalizer</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"scaledInstance"</span><span class="o">));</span>
+</pre></div>
+
+<ul>
+<li>
+<a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/preprocessing/StandardScaler.java">StandardScaler</a> transform raw features to standard normally distributed data (Gaussian with zero mean and unit variance). It uses <a href="https://github.com/pmerienne/trident-ml/blob/master/src/main/java/storm/trident/ml/stats/StreamStatistics.java">Stream Statistics</a> to remove mean and scale to variance.</li>
+</ul><div class="highlight"><pre><span class="n">TridentTopology</span> <span class="n">toppology</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TridentTopology</span><span class="o">();</span>
+
+<span class="n">toppology</span>
+  <span class="c1">// Emit tuples with 2 random features (named x0 and x1) and an associated boolean label (named label)</span>
+  <span class="o">.</span><span class="na">newStream</span><span class="o">(</span><span class="s">"randomFeatures"</span><span class="o">,</span> <span class="k">new</span> <span class="n">RandomFeaturesSpout</span><span class="o">())</span>
+
+  <span class="c1">// Convert trident tuple to instance</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"label"</span><span class="o">,</span> <span class="s">"x0"</span><span class="o">,</span> <span class="s">"x1"</span><span class="o">),</span> <span class="k">new</span> <span class="n">InstanceCreator</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">))</span>
+
+  <span class="c1">// Update stream statistics</span>
+  <span class="o">.</span><span class="na">partitionPersist</span><span class="o">(</span><span class="k">new</span> <span class="n">MemoryMapState</span><span class="o">.</span><span class="na">Factory</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">),</span> <span class="k">new</span> <span class="n">StreamStatisticsUpdater</span><span class="o">(</span><span class="s">"streamStats"</span><span class="o">,</span> <span class="k">new</span> <span class="n">StreamStatistics</span><span class="o">()),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">,</span> <span class="s">"streamStats"</span><span class="o">)).</span><span class="na">newValuesStream</span><span class="o">()</span>
+
+  <span class="c1">// Standardize stream using original stream statistics</span>
+  <span class="o">.</span><span class="na">each</span><span class="o">(</span><span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"instance"</span><span class="o">,</span> <span class="s">"streamStats"</span><span class="o">),</span> <span class="k">new</span> <span class="n">StandardScaler</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Fields</span><span class="o">(</span><span class="s">"scaledInstance"</span><span class="o">));</span>
+</pre></div>
+
+<h1>Upcoming features</h1>
+
+<ul>
+<li>Noise adaptive filter (LMS, Wiener, Kalman, ...)</li>
+<li>Distributed algorithms</li>
+<li>Change detection</li>
+</ul>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/pmerienne">pmerienne</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-40405535-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
